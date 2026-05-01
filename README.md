@@ -18,7 +18,8 @@ simulated in-game payment events (rewards, tournament prizes, achievements, purc
 ### Inspect 
 every delivery attempt in real time — status, HTTP response code, retry schedule
 #### 🎯 Expandable Delivery Attempts
-- **Click any delivery row** to expand and see the exact payload sent to that endpoint
+- **First successful delivery auto-expands** to show payload immediately
+- **Click any delivery row** to expand/collapse and see the exact payload sent to that endpoint
 - Visual chevron indicator (▼) shows expand/collapse state
 - Smooth animations and hover effects
 - Payload appears in context, right below the delivery details
@@ -806,6 +807,15 @@ When deploying to production:
 
 ### Environment Variables
 
+```bash
+DATABASE_URL=postgresql://...  # Auto-set by Railway
+OPENROUTER_API_KEY=your_key    # Required for AI assistant  
+WEBHOOK_SECRET=random_hex_32   # For HMAC signature generation
+```
+
+### Webhook Security
+
+See **Webhook Signature Verification** section above for complete signature validation examples.
 
 ### HTTPS Required
 
@@ -815,18 +825,15 @@ GamePay webhooks require HTTPS in production. Use:
 - **Render** (free tier with auto SSL)
 - **Fly.io** (free tier with auto SSL)
 
-### Webhook Security
-
-
 ---
 
 ## Known Issues / Limitations
 
 ### Current Limitations
 
-1. **No persistence** - Events are stored in memory only (restart = data loss)
-2. **No authentication** - Anyone with the URL can access the sandbox
-3. **Single instance only** - No horizontal scaling (uses in-memory storage)
+1. **No authentication** - Anyone with the URL can access the sandbox
+2. **UI shows only 50 most recent events** - Older events exist in database but not displayed
+3. **Single-instance deployment** - Not designed for horizontal scaling
 
 ### These are expected for a dev sandbox
 

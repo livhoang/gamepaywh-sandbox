@@ -824,7 +824,7 @@ async function loadEndpoints() {
       </div>
       <div class="card-meta">
         ${ep.description ? `<span>${ep.description}</span> · ` : ''}
-        <span>${ep.endpoint_id.slice(0,8)}...</span>
+        <span>${ep.endpoint_id}</span>
         ${ep.active ? `<button class="btn btn-danger" style="float:right;margin-top:-2px;" onclick="deactivateEndpoint('${ep.endpoint_id}',event)">Remove</button>` : ''}
       </div>
     </div>
@@ -941,7 +941,7 @@ async function loadEvents() {
         <span class="badge badge-${ev.status}">${ev.status}</span>
       </div>
       <div class="card-meta">
-        <span>${ev.event_id.slice(0,8)}...</span>
+        <span>${ev.event_id}</span>
         <span style="float:right;">${ev.created_at.slice(11,19)} UTC</span>
       </div>
     </div>
@@ -952,7 +952,7 @@ async function loadEvents() {
 
 async function selectEvent(eventId, scroll=true) {
   selectedEventId = eventId;
-  document.getElementById('detail-event-id').textContent = eventId.slice(0,8) + '...';
+  document.getElementById('detail-event-id').textContent = eventId;
 
   const res = await fetch(`/events/${eventId}`);
   if (!res.ok) return;
@@ -975,7 +975,7 @@ async function selectEvent(eventId, scroll=true) {
         <div style="flex:1;">
           <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">Target Endpoint</div>
           <div style="font-size:11px;color:var(--text);word-break:break-all;font-family:var(--mono);">${d.endpoint_url}</div>
-          ${d.endpoint_id ? `<div class="endpoint-info-badge">ID: ${d.endpoint_id.slice(0,8)}...</div>` : ''}
+          ${d.endpoint_id ? `<div class="endpoint-info-badge">ID: ${d.endpoint_id}</div>` : ''}
         </div>
         <span class="badge badge-${d.status}" style="margin-left:8px;">${d.status}</span>
       </div>
@@ -1003,19 +1003,26 @@ async function selectEvent(eventId, scroll=true) {
       <a href="#" onclick="showAllDeliveries('${eventId}'); return false;" style="color:var(--accent);text-decoration:underline;">Show all ${deliveries.length} attempts</a>
     </div>` : '';
 
-
-  document.getElementById('event-detail').innerHTML = `
+    // Auto-expand first successful delivery by default
+    if (deliveriesToShow.length > 0) {
+      setTimeout(() => {
+        const firstDelivery = document.getElementById('delivery-0');
+        const firstPayload = document.getElementById('delivery-0-payload');
+        if (firstDelivery && firstPayload) {
+          firstDelivery.classList.add('expanded');
+          firstPayload.classList.add('show');
+        }
+      }, 50); // Small delay to ensure DOM is ready
+    }
+  
+    document.getElementById('event-detail').innerHTML = `
     <div class="detail-section">
       <div class="detail-label">Event · <span class="badge badge-${ev.status}">${ev.status}</span></div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
-        ${ev.event_type} · ${ev.event_id.slice(0,8)}...
+        ${ev.event_type} · ${ev.event_id}
         <br/>Created: ${ev.created_at.slice(0,19).replace('T',' ')} UTC
         <br/>Idempotency key: <code style="color:var(--accent3);font-size:10px;">${ev.idempotency_key}</code>
       </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-label">Payload</div>
-      <div class="code-block">${JSON.stringify(ev.payload, null, 2)}</div>
     </div>
     <div class="detail-section">
       <div class="detail-label">Delivery Attempts (${deliveriesToShow.length}${showingFiltered ? ` of ${data.delivery_count}` : ''})</div>
@@ -1070,7 +1077,7 @@ async function showAllDeliveries(eventId) {
         <div style="flex:1;">
           <div style="font-size:10px;color:var(--muted);margin-bottom:2px;">Target Endpoint</div>
           <div style="font-size:11px;color:var(--text);word-break:break-all;font-family:var(--mono);">${d.endpoint_url}</div>
-          ${d.endpoint_id ? `<div class="endpoint-info-badge">ID: ${d.endpoint_id.slice(0,8)}...</div>` : ''}
+          ${d.endpoint_id ? `<div class="endpoint-info-badge">ID: ${d.endpoint_id}</div>` : ''}
         </div>
         <span class="badge badge-${d.status}" style="margin-left:8px;">${d.status}</span>
       </div>
@@ -1092,18 +1099,26 @@ async function showAllDeliveries(eventId) {
   `;
   }).join('') : '<div style="color:var(--muted);font-size:11px;">No delivery attempts yet.</div>';
 
+  // Auto-expand first successful delivery by default
+  if (deliveries.length > 0) {
+    setTimeout(() => {
+      const firstDelivery = document.getElementById('delivery-0');
+      const firstPayload = document.getElementById('delivery-0-payload');
+      if (firstDelivery && firstPayload) {
+        firstDelivery.classList.add('expanded');
+        firstPayload.classList.add('show');
+      }
+    }, 50); // Small delay to ensure DOM is ready
+  }
+  
   document.getElementById('event-detail').innerHTML = `
     <div class="detail-section">
       <div class="detail-label">Event · <span class="badge badge-${ev.status}">${ev.status}</span></div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">
-        ${ev.event_type} · ${ev.event_id.slice(0,8)}...
+        ${ev.event_type} · ${ev.event_id}
         <br/>Created: ${ev.created_at.slice(0,19).replace('T',' ')} UTC
         <br/>Idempotency key: <code style="color:var(--accent3);font-size:10px;">${ev.idempotency_key}</code>
       </div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-label">Payload</div>
-      <div class="code-block">${JSON.stringify(ev.payload, null, 2)}</div>
     </div>
     <div class="detail-section">
       <div class="detail-label">Delivery Attempts (${data.delivery_count})</div>
@@ -1244,9 +1259,10 @@ async function sendChat() {
 function startPolling() {
   loadEndpoints();
   loadEvents();
-  pollInterval = setInterval(() => {
-    loadEvents();
-  }, 8000);
+  // Auto-refresh - disabled
+  // pollInterval = setInterval(() => {
+  //   loadEvents();
+  // }, 8000);
 }
 
 startPolling();
