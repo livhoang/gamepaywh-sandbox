@@ -870,7 +870,7 @@ Filter only shows when there's a mix of success/failure.
 
 **Solutions:**
 1. Ensure `simple_webhook_receiver.py` is running
-2. Check it's on port 8001: `http://localhost:8001/webhook`
+2. Check it's on port 5000: `http://localhost:5000/webhook`
 3. Verify endpoint URL in Endpoints tab matches
 4. Check terminal for errors
 
