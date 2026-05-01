@@ -113,20 +113,99 @@ By default, Pipedream just receives and logs requests. You can add custom logic:
 ```javascript
 // Node.js code step
 export default defineComponent({
-  async run({ steps, $ }) {
-    const payload = steps.trigger.event.body;
-    
-    // Extract and log specific data
-    console.log("Event Type:", payload.event_type);
-    console.log("Player ID:", payload.player_id);
-    console.log("Amount:", payload.reward?.amount || payload.prize?.amount);
-    
-    // Return formatted data
-    return {
-      received_at: new Date().toISOString(),
-      event_summary: `${payload.event_type} for ${payload.player_id}`,
-      amount: payload.reward?.amount || payload.prize?.amount
-    };
+  name: "Process Webhook with Error Handling",
+  description: "Safely process webhook payload with proper error checking and debugging",
+  type: "action",
+  props: {
+    payload: {
+      type: "object",
+      label: "Webhook Payload",
+      description: "The full webhook payload data"
+    },
+    event_type: {
+      type: "string",
+      label: "Event Type",
+      description: "The type of event from the webhook",
+      optional: true
+    },
+    player_id: {
+      type: "string", 
+      label: "Player ID",
+      description: "The player identifier from the webhook",
+      optional: true
+    }
+  },
+  async run({ $ }) {
+    try {
+      // Log the full payload structure for debugging
+      console.log("Full payload structure:", JSON.stringify(this.payload, null, 2));
+      console.log("Payload type:", typeof this.payload);
+      console.log("Payload keys:", this.payload ? Object.keys(this.payload) : "payload is null/undefined");
+      
+      // Safe property access with fallbacks
+      const eventType = this.event_type || 
+                       (this.payload && this.payload.event_type) || 
+                       (this.payload && this.payload.eventType) ||
+                       (this.payload && this.payload.type) ||
+                       'unknown';
+                       
+      const playerId = this.player_id ||
+                      (this.payload && this.payload.player_id) ||
+                      (this.payload && this.payload.playerId) ||
+                      (this.payload && this.payload.user_id) ||
+                      (this.payload && this.payload.userId) ||
+                      'unknown';
+      
+      // Safe amount extraction with multiple possible paths
+      let amount = null;
+      if (this.payload) {
+        amount = this.payload.reward?.amount ||
+                this.payload.prize?.amount ||
+                this.payload.amount ||
+                this.payload.value ||
+                this.payload.reward_amount ||
+                this.payload.prize_value;
+      }
+      
+      // Log extracted values
+      console.log("Extracted Event Type:", eventType);
+      console.log("Extracted Player ID:", playerId);
+      console.log("Extracted Amount:", amount);
+      
+      // Create response object
+      const result = {
+        received_at: new Date().toISOString(),
+        event_summary: `${eventType} for ${playerId}`,
+        amount: amount,
+        raw_payload: this.payload,
+        debug_info: {
+          payload_exists: !!this.payload,
+          payload_type: typeof this.payload,
+          available_keys: this.payload ? Object.keys(this.payload) : []
+        }
+      };
+      
+      $.export("$summary", `Successfully processed ${eventType} event for player ${playerId}`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error("Error processing webhook payload:", error);
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        payload: this.payload
+      });
+      
+      $.export("$summary", `Error processing webhook: ${error.message}`);
+      
+      return {
+        error: true,
+        message: error.message,
+        received_at: new Date().toISOString(),
+        raw_payload: this.payload
+      };
+    }
   }
 })
 ```
